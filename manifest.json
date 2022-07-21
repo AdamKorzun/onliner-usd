@@ -1,0 +1,12 @@
+{
+  "manifest_version" : 2,
+  "name": "OnlinerUSD",
+  "version": "0.0.1",
+  "content_scripts": [
+    {
+      "matches": ["https://catalog.onliner.by/*"],
+      "js" : ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}

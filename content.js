@@ -2,7 +2,6 @@ const xhr = new XMLHttpRequest();
 const usdPriceClassName = 'usd-price'
 var exchangeRate = undefined;
 var MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
-var priceHTMLArray = [...document.getElementsByClassName("schema-product__price")];
 
 
 const Pages = {
@@ -29,34 +28,32 @@ function getExchangeRate() {
 function getNumberFromPrice(priceString){
   priceString = priceString.replace(/\&nbsp;/g, '');
   priceString = priceString.replace(/\s+/g, '');
-  console.log(priceString);
   let priceMatch = /\d+(,\d+)?/.exec(priceString);
   return Number(priceMatch[0].replace(',', '.'));
 }
 function modifyProductPagePrice() {
   
-  let mainPriceHTML = document.getElementsByClassName("offers-description__link offers-description__link_nodecor js-description-price-link")[0].innerHTML; 
-  let mainPriceValue = getNumberFromPrice(mainPriceHTML);
-  let mainPriceUSD = convertPrice(mainPriceValue);
   let mainPriceDiv = document.getElementsByClassName("offers-description__price offers-description__price_primary")[0];
-  pHTML = mainPriceDiv.getElementsByClassName(usdPriceClassName)
-  if (pHTML.length != 0) {
-    pHTML[0].innerHTML = mainPriceUSD;
-  }
-  else {
-    addProductMainPriceUI(mainPriceUSD);
-  }
+  let mainPriceValue = getNumberFromPrice(mainPriceDiv.getElementsByTagName('A')[0].innerHTML);
+  let mainPriceUSD = convertPrice(mainPriceValue);
+  modifyUIPrice(mainPriceDiv, mainPriceUSD);
+  
   
 }
 
+function modifyAsidePrices(){
+  let target = [...document.getElementsByClassName("product-aside__description product-aside__description_alter product-aside__description_font-weight_bold product-aside__description_ellipsis product-aside__description_huge--additional")];
+  for (let store of target) {
+    let priceBYN = getNumberFromPrice(store.getElementsByTagName('A')[0].getElementsByTagName('SPAN')[0].innerHTML);
+    modifyUIPrice(store,  convertPrice(priceBYN));
+  }
+}
 function addProductMainPriceUI(mainPriceUSD){
   let mainPriceDiv = document.getElementsByClassName("offers-description__price offers-description__price_primary")[0];
-  console.log(mainPriceDiv);
   let pHTML = document.createElement("P");
   pHTML.innerHTML = mainPriceUSD;
   pHTML.className = usdPriceClassName;
   mainPriceDiv.style.display = 'inline-block';
-  console.log(mainPriceDiv)
   mainPriceDiv.appendChild(pHTML);
 }
 // listens for the update on the product list (products are loaded asynchronously)
@@ -73,54 +70,49 @@ var productListObserver = new MutationObserver(function(mutations) {
     setTimeout(main,1000);
   }
 });
-
-
-
-function getPriceHTMLArray() {
-  priceHTMLArray = [...document.getElementsByClassName("schema-product__price")];
+function modifyUIPrice(divTag, priceUSD){
+  let pHTML = divTag.getElementsByClassName(usdPriceClassName)
+  if (pHTML.length != 0) {
+    pHTML[0].innerHTML = priceUSD;
+    return;
+  } 
+  divTag.getElementsByTagName('a')[0].style.color = '#808080';
+  pHTML = document.createElement("P");
+  pHTML.innerHTML = priceUSD;
+  pHTML.className = usdPriceClassName;
+  divTag.style.display = 'inline-block';
+  divTag.appendChild(pHTML);
 }
+function modifyRecommendedProductPrices(){
+  let recommendations = [...document.getElementsByClassName("product-recommended__price")];
+  for (let recommendation of recommendations) {
+    let priceBYN = getNumberFromPrice(recommendation.getElementsByTagName('A')[0].getElementsByTagName('SPAN')[0].innerHTML);
+    modifyUIPrice(recommendation,  convertPrice(priceBYN));
+  }
+}
+
 
 function convertPrice(priceBYN) {
   return Math.round(priceBYN / exchangeRate) + ' $';
 }
 
-function addPriceCatalogUI(priceHtml, priceBYNValue){
-  var pHtml = document.createElement("P");
-  pHtml.innerHTML ='от ' +  convertPrice(priceBYNValue);
-  pHtml.className = usdPriceClassName;
-  priceHtml.style.display = 'inline-block';
-  priceHtml.appendChild(pHtml);
-}
-
-function checkUSDPricePresent(priceHTML){
-  pHTML = priceHTML.getElementsByClassName(usdPriceClassName)
-  if (pHTML.length != 0) {
-    pHTML[0].innerHTML = convertPrice(priceValue);
-    return true;
-  }
-  return false;
-}
-
 function modifyCatalogPrices() {
+  let priceHTMLArray = [...document.getElementsByClassName("schema-product__price")];
   for (let priceHTML of priceHTMLArray) {
-    let priceBYN = priceHTML.getElementsByTagName('a')[0].getElementsByTagName('span')[0].innerHTML;
-    priceHTML.getElementsByTagName('a')[0].style.color = '#808080';
-    priceValue = getNumberFromPrice(priceBYN);
-    if (!checkUSDPricePresent(priceHTML)) {
-      addPriceCatalogUI(priceHTML, priceValue);
-    }
-  
+    let priceBYN = getNumberFromPrice(priceHTML.getElementsByTagName('a')[0].getElementsByTagName('span')[0].innerHTML);
+    modifyUIPrice(priceHTML, convertPrice(priceBYN));
   }
 }
 
 function main() {
-  getPriceHTMLArray();
   switch (currentPage){
     case Pages.ProductList:
       modifyCatalogPrices();
       break;
     case Pages.Product:
       modifyProductPagePrice();
+      modifyAsidePrices();
+      modifyRecommendedProductPrices();
       break;
     default:
       console.log('Page is not supported yet');
@@ -135,6 +127,8 @@ if (!oberserverTarget) {
   oberserverTarget = document.getElementsByClassName("product product_details b-offers js-product")[0]; 
   currentPage = Pages.Product;
 }
+
+
 // console.log(window.location.toString());
 productListObserver.observe(oberserverTarget, {
   childList: true,
